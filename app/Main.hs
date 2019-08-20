@@ -1,6 +1,10 @@
 module Main where
--- import Lib
 import Data.Char
+
+-- TODOS
+-- TODO: Random seeds with a seed number
+-- TODO: Pattern match with the constant escaped
+-- TODO: Various clean up
 
 -- RULES
 -- Any live cell with fewer than two live neighbours dies, as if by underpopulation
@@ -12,17 +16,24 @@ import Data.Char
 type Coordinate = [Int]
 type Coordinates = [Coordinate]
 
-type Point = Char
-type Row = [Point]
+type Cell = Char
+type Row = [Cell]
 type Board = [Row]
+type CellWithNeighborCount = (Cell, Int)
 
 -- CONSTANTS
-blankPoint = '-'
-blankRow = take 5 (repeat blankPoint)
-initialBoard = take 5 (repeat blankRow)
-initialLife = [[0,0],[1,1],[2,2],[3,3],[4,4]]
+deadCell = '-'
+liveCell = 'O'
+rowCount = 5
+colCount = 5
+rowBound = rowCount - 1
+colBound = colCount - 1
 
--- HELPERS
+blankRow = take rowCount (repeat deadCell)
+blankBoard = take colCount (repeat blankRow)
+seed = [[0,0],[1,1],[2,2],[3,3],[4,4],[1,0],[0,1],[2,3],[3,2],[4,4],[3,4]]
+
+-- GENERAL HELPERS
 second :: Coordinate -> Int
 second list = list!!1
 
@@ -32,32 +43,71 @@ replaceNth idx val (hd:tail)
   | idx == 0 = val:tail
   | otherwise = hd:replaceNth (idx-1) val tail
 
--- MAIN LOGIC
-setValueAtCoordinate :: Board -> Coordinate -> Point -> Board
+-- PRINTING HELPERS
+
+printDivider :: IO()
+printDivider = putStrLn "======"
+
+printRows :: Board -> IO()
+printRows (row:[]) = do
+  putStrLn row
+  putStrLn "======"
+printRows (row:rest) = do
+  putStrLn row
+  printRows rest
+
+printBoard :: Board -> IO()
+printBoard board = do
+  printRows board
+
+-- DOMAIN HELPERS
+invalidIdx :: Int -> Int -> Bool
+invalidIdx bound val = val > bound || val < 0
+
+invalidRowIdx :: Int -> Bool
+invalidRowIdx val = invalidIdx rowBound val
+
+invalidColIdx :: Int -> Bool
+invalidColIdx val = invalidIdx colBound val
+
+invalidCoordinate :: Coordinate -> Bool
+invalidCoordinate coordinate = do
+  let rowIdx = head coordinate
+  let colIdx = second coordinate
+  invalidRowIdx rowIdx || invalidColIdx colIdx
+
+-- SETUP
+
+setValueAtCoordinate :: Board -> Coordinate -> Cell -> Board
 setValueAtCoordinate board coordinate value = do
   let rowIdx = head coordinate
   let colIdx = second coordinate
   let row = board!!rowIdx
-  let newRow = replaceNth colIdx value (board!!rowIdx)
+  let newRow = replaceNth colIdx value row
   replaceNth rowIdx newRow board
-
-hasLife :: Board -> Coordinate -> Bool
-hasLife board coordinate = do
-  valueAtCoordinate board coordinate == 'X'
-
-valueAtCoordinate :: Board -> Coordinate -> Point
-valueAtCoordinate board coordinate = do
-  let rowIdx = head coordinate
-  let colIdx = second coordinate
-  board!!rowIdx!!colIdx
 
 setRowLife :: Board -> Coordinate -> Board
 setRowLife board coordinate = do
-  setValueAtCoordinate board coordinate 'X'
+  setValueAtCoordinate board coordinate liveCell
 
 setBoardLife :: Board -> Coordinates -> Board
 setBoardLife board coords = do
   foldl setRowLife board coords
+
+-- LIFE CYCLES
+
+valueAtCoordinate :: Board -> Coordinate -> Cell
+valueAtCoordinate board coordinate = do
+  let rowIdx = head coordinate
+  let colIdx = second coordinate
+  (board!!rowIdx)!!colIdx
+
+hasLife :: Board -> Coordinate -> Bool
+hasLife board coordinate = do
+  if invalidCoordinate coordinate then
+    False
+  else
+    valueAtCoordinate board coordinate == liveCell
 
 neighborCount :: Board -> Coordinate -> Int
 neighborCount board coordinate = do
@@ -66,23 +116,36 @@ neighborCount board coordinate = do
   let neighborCoordinates = [[rowIdx - 1, colIdx],[rowIdx + 1, colIdx],[rowIdx, colIdx - 1],[rowIdx, colIdx + 1]]
   length (filter (hasLife board) neighborCoordinates)
 
+nextValue :: CellWithNeighborCount -> Cell
+nextValue ('O', 2) = liveCell
+nextValue ('O', 3) = liveCell
+nextValue ('-', 3) = liveCell
+nextValue _        = deadCell
+
+getNextValue :: Board -> Coordinate -> Cell
+getNextValue board coordinate = do
+  let neighbors = neighborCount board coordinate
+  let cell = valueAtCoordinate board coordinate
+  nextValue (cell, neighbors)
+
+getNextRow :: Board -> Int -> Row
+getNextRow board rowIdx = do
+  [ getNextValue board [rowIdx, colIdx] | colIdx <- [0..colBound]]
+
 getNextBoard :: Board -> Board
-getNextBoard currentBoard = do
-  -- iterate over rows
-  -- get neighBorBound
-  -- map getNextRow currentBoard
-  initialBoard
+getNextBoard board = do
+  [ getNextRow board rowIdx | rowIdx <- [0..rowBound]]
 
 iterateLife :: Board -> Board -> IO()
 iterateLife lastBoard currentBoard = do
-  print currentBoard
+  printBoard currentBoard
 
   if (lastBoard == currentBoard) then
-    print "=== DONE ==="
+    print "STABLE LIFE"
   else
     iterateLife currentBoard (getNextBoard currentBoard)
 
 main = do
-  let withLife = (setBoardLife initialBoard initialLife)
-  iterateLife initialBoard withLife
-
+  let initialBoard = setBoardLife blankBoard seed
+  printDivider
+  iterateLife blankBoard initialBoard
