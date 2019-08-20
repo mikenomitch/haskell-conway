@@ -2,11 +2,10 @@ module Main where
 -- import Lib
 
 -- TODOS
--- TODO: Coordinates to
--- TODO: Import from Lib?
--- TODO: Various clean up
+-- TODO: Coordinates to tuple
 -- TODO: Pattern match with the constant escaped
 -- TODO: Random seeds with a seed number
+-- TODO: Various clean up
 
 -- TYPES
 type Coordinate = [Int]
@@ -147,6 +146,10 @@ iterateLife lastBoard currentBoard = do
     iterateLife currentBoard (getNextBoard currentBoard)
 
 main = do
+  putStrLn "How large should the board be?"
+  putStrLn "How many cells should be living?"
+  -- foo <- readLn
+  -- put
   let initialBoard = setBoardLife blankBoard seed
   printDivider
   iterateLife blankBoard initialBoard
