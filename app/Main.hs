@@ -1,16 +1,12 @@
 module Main where
-import Data.Char
+-- import Lib
 
 -- TODOS
--- TODO: Random seeds with a seed number
--- TODO: Pattern match with the constant escaped
+-- TODO: Coordinates to
+-- TODO: Import from Lib?
 -- TODO: Various clean up
-
--- RULES
--- Any live cell with fewer than two live neighbours dies, as if by underpopulation
--- Any live cell with two or three live neighbours lives on to the next generation
--- Any live cell with more than three live neighbours dies, as if by overpopulation
--- Any dead cell with exactly three live neighbours becomes a live cell, as if by reproduction
+-- TODO: Pattern match with the constant escaped
+-- TODO: Random seeds with a seed number
 
 -- TYPES
 type Coordinate = [Int]
@@ -34,6 +30,7 @@ blankBoard = take colCount (repeat blankRow)
 seed = [[0,0],[1,1],[2,2],[3,3],[4,4],[1,0],[0,1],[2,3],[3,2],[4,4],[3,4]]
 
 -- GENERAL HELPERS
+
 second :: Coordinate -> Int
 second list = list!!1
 
@@ -46,12 +43,15 @@ replaceNth idx val (hd:tail)
 -- PRINTING HELPERS
 
 printDivider :: IO()
-printDivider = putStrLn "======"
+printDivider = putStrLn "==========="
+
+printEnd :: IO()
+printEnd = putStrLn "STABLE LIFE"
 
 printRows :: Board -> IO()
 printRows (row:[]) = do
   putStrLn row
-  putStrLn "======"
+  printDivider
 printRows (row:rest) = do
   putStrLn row
   printRows rest
@@ -61,6 +61,7 @@ printBoard board = do
   printRows board
 
 -- DOMAIN HELPERS
+
 invalidIdx :: Int -> Int -> Bool
 invalidIdx bound val = val > bound || val < 0
 
@@ -141,7 +142,7 @@ iterateLife lastBoard currentBoard = do
   printBoard currentBoard
 
   if (lastBoard == currentBoard) then
-    print "STABLE LIFE"
+    printEnd
   else
     iterateLife currentBoard (getNextBoard currentBoard)
 
