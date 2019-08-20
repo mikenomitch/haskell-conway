@@ -2,7 +2,7 @@
 
 This is an implementation of Conway's Game of Life in Haskell.
 
-See `./app/Main.hs` for the logic
+See `./app/Main.hs` for the logic. Change the makeSeeds function for different evolution.
 
 ## The Rules
 

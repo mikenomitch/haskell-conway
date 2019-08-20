@@ -1,14 +1,8 @@
 module Main where
--- import Lib
-
--- TODOS
--- TODO: Coordinates to tuple
--- TODO: Pattern match with the constant escaped
--- TODO: Random seeds with a seed number
--- TODO: Various clean up
 
 -- TYPES
-type Coordinate = [Int]
+
+type Coordinate = (Int, Int)
 type Coordinates = [Coordinate]
 
 type Cell = Char
@@ -17,21 +11,11 @@ type Board = [Row]
 type CellWithNeighborCount = (Cell, Int)
 
 -- CONSTANTS
+
 deadCell = '-'
 liveCell = 'O'
-rowCount = 5
-colCount = 5
-rowBound = rowCount - 1
-colBound = colCount - 1
-
-blankRow = take rowCount (repeat deadCell)
-blankBoard = take colCount (repeat blankRow)
-seed = [[0,0],[1,1],[2,2],[3,3],[4,4],[1,0],[0,1],[2,3],[3,2],[4,4],[3,4]]
 
 -- GENERAL HELPERS
-
-second :: Coordinate -> Int
-second list = list!!1
 
 replaceNth :: Int -> a -> [a] -> [a]
 replaceNth _ _ [] = []
@@ -61,27 +45,37 @@ printBoard board = do
 
 -- DOMAIN HELPERS
 
+colBound :: Board -> Int
+colBound board = (length (board!!0)) - 1
+
+rowBound :: Board -> Int
+rowBound board = (length board) - 1
+
 invalidIdx :: Int -> Int -> Bool
 invalidIdx bound val = val > bound || val < 0
 
-invalidRowIdx :: Int -> Bool
-invalidRowIdx val = invalidIdx rowBound val
+invalidRowIdx :: Board -> Int -> Bool
+invalidRowIdx board val = invalidIdx (rowBound board) val
 
-invalidColIdx :: Int -> Bool
-invalidColIdx val = invalidIdx colBound val
+invalidColIdx :: Board -> Int -> Bool
+invalidColIdx board val = invalidIdx (colBound board) val
 
-invalidCoordinate :: Coordinate -> Bool
-invalidCoordinate coordinate = do
-  let rowIdx = head coordinate
-  let colIdx = second coordinate
-  invalidRowIdx rowIdx || invalidColIdx colIdx
+invalidCoordinate :: Board -> Coordinate -> Bool
+invalidCoordinate board (rowIdx, colIdx) = do
+  invalidRowIdx board rowIdx || invalidColIdx board colIdx
 
 -- SETUP
 
+-- CHANGE HERE TO SEE DIFFERENT EVOLUTION
+makeSeeds :: Int -> Coordinates
+makeSeeds size = do
+  [ (x,y) |
+    x <- [0..(size -1)],
+    y <- [0..(size - 1)],
+    (mod (x + y) 3) == 0 || x == y || x == (size - y) ]
+
 setValueAtCoordinate :: Board -> Coordinate -> Cell -> Board
-setValueAtCoordinate board coordinate value = do
-  let rowIdx = head coordinate
-  let colIdx = second coordinate
+setValueAtCoordinate board (rowIdx, colIdx) value = do
   let row = board!!rowIdx
   let newRow = replaceNth colIdx value row
   replaceNth rowIdx newRow board
@@ -94,26 +88,30 @@ setBoardLife :: Board -> Coordinates -> Board
 setBoardLife board coords = do
   foldl setRowLife board coords
 
+boardOfSize :: Int -> Board
+boardOfSize size = do
+  let blankRow = take size (repeat deadCell)
+  take size (repeat blankRow)
+
 -- LIFE CYCLES
 
 valueAtCoordinate :: Board -> Coordinate -> Cell
-valueAtCoordinate board coordinate = do
-  let rowIdx = head coordinate
-  let colIdx = second coordinate
+valueAtCoordinate board (rowIdx, colIdx) = do
   (board!!rowIdx)!!colIdx
 
 hasLife :: Board -> Coordinate -> Bool
 hasLife board coordinate = do
-  if invalidCoordinate coordinate then
+  if invalidCoordinate board coordinate then
     False
   else
     valueAtCoordinate board coordinate == liveCell
 
 neighborCount :: Board -> Coordinate -> Int
-neighborCount board coordinate = do
-  let rowIdx = head coordinate
-  let colIdx = second coordinate
-  let neighborCoordinates = [[rowIdx - 1, colIdx],[rowIdx + 1, colIdx],[rowIdx, colIdx - 1],[rowIdx, colIdx + 1]]
+neighborCount board (rowIdx, colIdx) = do
+  let neighborCoordinates = [ (rowIdx - 1, colIdx),
+                              (rowIdx + 1, colIdx),
+                              (rowIdx, colIdx - 1),
+                              (rowIdx, colIdx + 1) ]
   length (filter (hasLife board) neighborCoordinates)
 
 nextValue :: CellWithNeighborCount -> Cell
@@ -130,11 +128,13 @@ getNextValue board coordinate = do
 
 getNextRow :: Board -> Int -> Row
 getNextRow board rowIdx = do
-  [ getNextValue board [rowIdx, colIdx] | colIdx <- [0..colBound]]
+  [ getNextValue board (rowIdx, colIdx) |
+    colIdx <- [0..(colBound board)] ]
 
 getNextBoard :: Board -> Board
 getNextBoard board = do
-  [ getNextRow board rowIdx | rowIdx <- [0..rowBound]]
+  [ getNextRow board rowIdx |
+    rowIdx <- [0..(rowBound board)] ]
 
 iterateLife :: Board -> Board -> IO()
 iterateLife lastBoard currentBoard = do
@@ -147,9 +147,11 @@ iterateLife lastBoard currentBoard = do
 
 main = do
   putStrLn "How large should the board be?"
-  putStrLn "How many cells should be living?"
-  -- foo <- readLn
-  -- put
-  let initialBoard = setBoardLife blankBoard seed
+  boardSize <- getLine
+
+  let blankBoard = boardOfSize (read boardSize)
+  let seedLife = makeSeeds (read boardSize)
+  let initialBoard = setBoardLife blankBoard seedLife
+
   printDivider
   iterateLife blankBoard initialBoard
